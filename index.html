@@ -319,7 +319,20 @@ const aromaCloud = document.getElementById("aromaCloud");
 
 const tabMy = document.getElementById("tab-my");
 const tabAll = document.getElementById("tab-all");
+/***********************
+ * SESSION MODAL LOGIC
+ ***********************/
+const startSessionBtn = document.getElementById("startSessionBtn");
+const sessionInput = document.getElementById("sessionInput");
+const sessionModal = document.getElementById("sessionModal");
 
+startSessionBtn.addEventListener("click", () => {
+  const input = sessionInput.value.trim().toLowerCase();
+  if (!input) return;
+
+  sessionID = input;
+  sessionModal.style.display = "none";
+});
 /***********************
  * CHARTS
  ***********************/
