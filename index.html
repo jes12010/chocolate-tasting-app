@@ -512,6 +512,62 @@ function buildMouthfeelButtons() {
 }
 
 /***********************
+ * RESTORE SAVED RATINGS
+ ***********************/
+function loadMySavedRatings() {
+  if (!firebaseEnabled || !sessionID || !currentChocolateId) return;
+
+  db.ref(`ratings/${sessionID}/${currentChocolateId}/${userID}`).once("value", snapshot => {
+    const data = snapshot.val();
+    if (!data) return;
+
+    // Basic tastes
+    BASIC_TASTES.forEach(taste => {
+      const val = data.basic?.[taste] ?? 0;
+      myRatings.basic[taste] = val;
+
+      const slider = document.querySelector(`input[data-type="basic"][data-key="${taste}"]`);
+      if (slider) slider.value = val;
+
+      const idx = BASIC_TASTES.indexOf(taste);
+      basicRadarChart.data.datasets[0].data[idx] = val;
+    });
+    basicRadarChart.update();
+
+    // Aroma sliders
+    AROMA_AXES.forEach(axis => {
+      const val = data.aromaValues?.[axis] ?? 0;
+      myRatings.aromaValues[axis] = val;
+
+      const slider = document.querySelector(`input[data-type="aroma"][data-key="${axis}"]`);
+      if (slider) slider.value = val;
+
+      const idx = AROMA_AXES.indexOf(axis);
+      aromaRadarChart.data.datasets[0].data[idx] = val;
+    });
+    aromaRadarChart.update();
+
+    // Mouthfeel words
+    myRatings.mouthfeel = new Set(data.mouthfeel || []);
+    document.querySelectorAll('#mouthfeel-buttons button').forEach(btn => {
+      const word = btn.dataset.word;
+      if (myRatings.mouthfeel.has(word)) btn.classList.add("selected");
+      else btn.classList.remove("selected");
+    });
+
+    // Aroma words
+    myRatings.aromaWords = new Set(data.aromaWords || []);
+    document.querySelectorAll('#aroma-sliders button').forEach(btn => {
+      const word = btn.dataset.word;
+      if (myRatings.aromaWords.has(word)) btn.classList.add("selected");
+      else btn.classList.remove("selected");
+    });
+
+    updateClouds();
+  });
+}
+
+/***********************
  * SLIDER EVENT HANDLERS
  ***********************/
 function attachSliderListeners() {
@@ -547,16 +603,11 @@ function attachSliderListeners() {
 }
 
 /***********************
- * EVENT LISTENERS
+ * LOAD CHOCOLATE
  ***********************/
-document.querySelectorAll(".choc-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    loadChocolate(btn.dataset.chocId);
-  });
-});
-
 function loadChocolate(chocId) {
   currentChocolateId = chocId;
+
   const btn = document.querySelector(`.choc-btn[data-choc-id="${chocId}"]`);
   chocTitle.textContent = btn.textContent;
 
@@ -568,9 +619,18 @@ function loadChocolate(chocId) {
   buildAromaSliders();
   buildMouthfeelButtons();
   attachSliderListeners();
+
+  loadMySavedRatings();
   loadGroupRatings();
 }
 
+document.querySelectorAll(".choc-btn").forEach(btn => {
+  btn.addEventListener("click", () => loadChocolate(btn.dataset.chocId));
+});
+
+/***********************
+ * TAB SWITCHING
+ ***********************/
 tabMy.addEventListener("click", () => {
   currentTab = "my";
   tabMy.classList.add("active");
@@ -602,15 +662,20 @@ tabAll.addEventListener("click", () => {
 });
 
 /***********************
- * CLOUDS
+ * WORD CLOUDS (MY VIEW)
  ***********************/
 function updateClouds() {
-  mouthfeelCloud.textContent = Array.from(myRatings.mouthfeel).join(", ");
-  aromaCloud.textContent = Array.from(myRatings.aromaWords).join(", ");
+  mouthfeelCloud.innerHTML = Array.from(myRatings.mouthfeel)
+    .map(w => `<span style="font-size:18px;margin:4px;">${w}</span>`)
+    .join("");
+
+  aromaCloud.innerHTML = Array.from(myRatings.aromaWords)
+    .map(w => `<span style="font-size:18px;margin:4px;">${w}</span>`)
+    .join("");
 }
 
 /***********************
- * GROUP AVERAGING
+ * GROUP AVERAGING + WORD CLOUD SIZING
  ***********************/
 function loadGroupRatings() {
   if (!firebaseEnabled) return;
@@ -621,11 +686,13 @@ function loadGroupRatings() {
 
     const users = Object.values(all);
 
+    // Average basic tastes
     const avgBasic = BASIC_TASTES.map(taste => {
       const vals = users.map(u => u.basic?.[taste] ?? 0);
       return vals.reduce((a,b)=>a+b,0) / vals.length;
     });
 
+    // Average aroma axes
     const avgAroma = AROMA_AXES.map(axis => {
       const vals = users.map(u => u.aromaValues?.[axis] ?? 0);
       return vals.reduce((a,b)=>a+b,0) / vals.length;
@@ -638,16 +705,32 @@ function loadGroupRatings() {
       aromaRadarChart.update();
     }
 
-    const mouthfeelWords = {};
-    const aromaWords = {};
+    // Word frequencies
+    const mouthfeelFreq = {};
+    const aromaFreq = {};
 
     users.forEach(u => {
-      (u.mouthfeel || []).forEach(w => mouthfeelWords[w] = (mouthfeelWords[w]||0)+1);
-      (u.aromaWords || []).forEach(w => aromaWords[w] = (aromaWords[w]||0)+1);
+      (u.mouthfeel || []).forEach(w => mouthfeelFreq[w] = (mouthfeelFreq[w]||0)+1);
+      (u.aromaWords || []).forEach(w => aromaFreq[w] = (aromaFreq[w]||0)+1);
     });
 
-    mouthfeelCloud.textContent = Object.keys(mouthfeelWords).join(", ");
-    aromaCloud.textContent = Object.keys(aromaWords).join(", ");
+    // Scale font sizes
+    const maxM = Math.max(...Object.values(mouthfeelFreq), 1);
+    const maxA = Math.max(...Object.values(aromaFreq), 1);
+
+    mouthfeelCloud.innerHTML = Object.entries(mouthfeelFreq)
+      .map(([word, count]) => {
+        const size = 14 + (count / maxM) * 26; // 14–40px
+        return `<span style="font-size:${size}px;margin:4px;">${word}</span>`;
+      })
+      .join("");
+
+        aromaCloud.innerHTML = Object.entries(aromaFreq)
+      .map(([word, count]) => {
+        const size = 14 + (count / maxA) * 26; // 14–40px
+        return `<span style="font-size:${size}px;margin:4px;">${word}</span>`;
+      })
+      .join("");
   });
 }
 
@@ -660,7 +743,7 @@ function updateFirebase() {
   db.ref(`ratings/${sessionID}/${currentChocolateId}/${userID}`).set({
     basic: Object.fromEntries(Object.entries(myRatings.basic)),
     mouthfeel: Array.from(myRatings.mouthfeel),
-        aromaValues: Object.fromEntries(Object.entries(myRatings.aromaValues)),
+    aromaValues: Object.fromEntries(Object.entries(myRatings.aromaValues)),
     aromaWords: Array.from(myRatings.aromaWords)
   });
 }
