@@ -445,17 +445,14 @@ function resetLocalRatings() {
   mouthfeelCloud.innerHTML = "";
   aromaCloud.innerHTML = "";
 
-  // Reset charts
-  if (basicRadarChart) {
-    basicRadarChart.data.datasets[0].data = BASIC_TASTES.map(() => 0);
-    basicRadarChart.update();
-  }
-  if (aromaRadarChart) {
-    aromaRadarChart.data.datasets[0].data = AROMA_AXES.map(() => 0);
-    aromaRadarChart.update();
-  }
-}
+  // Reset charts (THIS is the missing piece)
+  basicRadarChart.data.datasets[0].data = BASIC_TASTES.map(() => 0);
+  basicRadarChart.update();
 
+  aromaRadarChart.data.datasets[0].data = AROMA_AXES.map(() => 0);
+  aromaRadarChart.update();
+}
+    
 /***********************
  * UI BUILDERS
  ***********************/
@@ -617,12 +614,14 @@ function loadChocolate(chocId) {
   buildBasicSliders();
   buildAromaSliders();
   buildMouthfeelButtons();
+
+  // Attach listeners AFTER UI is built
   attachSliderListeners();
 
-  // Reset UI to blank first
+  // Reset UI to blank
   resetLocalRatings();
 
-  // Then restore saved ratings (if any)
+  // Restore saved ratings (if any)
   loadMySavedRatings();
 
   // Load group averages
