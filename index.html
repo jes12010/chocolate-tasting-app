@@ -317,12 +317,15 @@
     const aromaCloud = document.getElementById("aromaCloud");
 
     /***********************
-     * SESSION MODAL       *
+     * SESSION MODAL FIX   *
      ***********************/
     startSessionBtn.addEventListener("click", () => {
       const val = sessionInput.value.trim();
       if (!val) return;
+
       sessionID = val;
+
+      // FIX: Hide modal so landing page becomes interactive
       sessionModal.style.display = "none";
     });
 
@@ -510,5 +513,16 @@
     /***********************
      * FIREBASE SYNC       *
      ***********************/
-    function updateFirebase() {
-      if (!firebaseEnabled || !sessionID || !currentChocolateId)
+   function updateFirebase() {
+  if (!firebaseEnabled || !sessionID || !currentChocolateId) return;
+
+  db.ref(`ratings/${sessionID}/${currentChocolateId}`).set({
+    basic: Object.fromEntries(Object.entries(myRatings.basic)),
+    mouthfeel: Array.from(myRatings.mouthfeel),
+    aromaValues: Object.fromEntries(Object.entries(myRatings.aromaValues)),
+    aromaWords: Array.from(myRatings.aromaWords)
+  });
+}
+</script>
+</body>
+</html>
