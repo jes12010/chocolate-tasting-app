@@ -542,6 +542,39 @@ function buildMouthfeelButtons() {
   });
 }
 
+function attachSliderListeners() {
+  // BASIC TASTES
+  document.querySelectorAll('input[data-type="basic"]').forEach(slider => {
+    slider.addEventListener("input", () => {
+      const key = slider.dataset.key;
+      const value = Number(slider.value);
+
+      myRatings.basic[key] = value;
+
+      const index = BASIC_TASTES.indexOf(key);
+      basicRadarChart.data.datasets[0].data[index] = value;
+      basicRadarChart.update();
+
+      updateFirebase();
+    });
+  });
+
+  // AROMA AXES
+  document.querySelectorAll('input[data-type="aroma"]').forEach(slider => {
+    slider.addEventListener("input", () => {
+      const key = slider.dataset.key;
+      const value = Number(slider.value);
+
+      myRatings.aromaValues[key] = value;
+
+      const index = AROMA_AXES.indexOf(key);
+      aromaRadarChart.data.datasets[0].data[index] = value;
+      aromaRadarChart.update();
+
+      updateFirebase();
+    });
+  });
+}
 /***********************
  * RESTORE SAVED RATINGS
  ***********************/
