@@ -611,16 +611,23 @@ function loadChocolate(chocId) {
   pageSelect.classList.add("hidden");
   pageRatings.classList.remove("hidden");
 
+  // 1. Build UI first
   initCharts();
   buildBasicSliders();
   buildAromaSliders();
   buildMouthfeelButtons();
 
+  // 2. Reset UI to blank BEFORE attaching listeners
+  resetLocalRatings();
+
+  // 3. Attach listeners AFTER UI exists
   attachSliderListeners();
   attachDescriptorListeners();
 
-  resetLocalRatings();
+  // 4. Load saved data AFTER listeners exist
   loadMySavedRatings();
+
+  // 5. Load group data last
   loadGroupRatings();
 }
 
