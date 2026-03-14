@@ -124,7 +124,7 @@
     #sessionCard input {
       width: 90%;
       padding: 10px;
-      margin-top: 15px;
+      margin-top: 10px;
       border-radius: 6px;
       border: none;
       font-size: 16px;
@@ -147,11 +147,15 @@
 <body>
   <h1>Chocolate Tasting</h1>
 
-  <!-- SESSION ID MODAL -->
+  <!-- SESSION ID + USER ID MODAL -->
   <div id="sessionModal">
     <div id="sessionCard">
       <h2>Enter Session ID</h2>
-      <input id="sessionInput" type="text" placeholder="e.g. GroupA" />
+      <input id="sessionInput" type="text" placeholder="e.g. groupA" />
+
+      <h3>Your User ID</h3>
+      <input id="userIdInput" type="text" readonly />
+
       <button id="startSessionBtn">Start Session</button>
     </div>
   </div>
@@ -231,13 +235,27 @@ try {
   db = firebase.database();
   firebaseEnabled = true;
 } catch (e) {
-  console.warn("Firebase not configured or failed to init.", e);
+  console.warn("Firebase init failed", e);
 }
 
+/***********************
+ * AUTO-GENERATED USER ID
+ ***********************/
+let userID = localStorage.getItem("tasterID");
+if (!userID) {
+  userID = "user_" + Math.random().toString(36).substring(2, 10);
+  localStorage.setItem("tasterID", userID);
+}
+document.getElementById("userIdInput").value = userID;
+
+/***********************
+ * SESSION ID
+ ***********************/
 let sessionID = "";
 
-const BASIC_TASTES = ["Sweet", "Sour", "Bitter", "Salty", "Umami"];
-
+/***********************
+ * AROMA AXES + DESCRIPTORS
+ ***********************/
 const AROMA_AXES = [
   "Fruity",
   "Vegetal",
@@ -256,32 +274,40 @@ const AROMA_COLORS = {
   "Cocoa": "#6a3d9a"
 };
 
-const MOUTHFEEL_DESCRIPTORS = [
-  "Creamy", "Coarse", "Soft", "Melting", "Sticky", "Oily", "Grainy",
-  "Pungent", "Astringent", "Warm", "Cool"
-];
-
 const AROMA_DESCRIPTORS_BY_AXIS = {
-  "Fruity": ["Berry", "Strawberry","Raspberry","Cherry","Blueberry","Blackberry","Cranberry",
-"Citrus","Orange","Lemon","Lime", "Stone Fruit","Peach","Plum","Apricot","Apple","Fig","Dried Fruit","Date","Raisin","Prune", "Tropical Fruit","Mango","Banana","Passionfruit",],
-  "Vegetal": ["Earthy", "Herb-like", "Green", "Hay-like","Olive","Mushroom","Tobacco","Smoked Wood"],
+  "Fruity": [
+    "Berry","Strawberry","Raspberry","Cherry","Blueberry","Blackberry","Cranberry",
+    "Citrus","Orange","Lemon","Lime",
+    "Stone Fruit","Peach","Plum","Apricot","Apple","Fig",
+    "Dried Fruit","Date","Raisin","Prune",
+    "Tropical Fruit","Mango","Banana","Passionfruit"
+  ],
+  "Vegetal": [
+    "Earthy","Herb-like","Green","Hay-like","Olive","Mushroom","Tobacco","Smoked Wood"
+  ],
   "Floral/Spices": [
-    "Rose", "Jasmine", "Lavender", "Chamomile",
-    "Cinnamon", "Nutmeg", "Clove", "Pepper", "Anise","Bergamot","Licorice"
+    "Rose","Jasmine","Lavender","Chamomile",
+    "Cinnamon","Nutmeg","Clove","Pepper","Anise","Bergamot","Licorice"
   ],
   "Sweet/Dairy": [
-    "Vanilla", "Coconut",
-"Maple Syrup", "Molasses", "Honey",
-    "Caramel", "Toffee", "Burnt Sugar",
-    "Milk", "Cream", "Butter", "Yogurt"
+    "Vanilla","Coconut",
+    "Maple Syrup","Molasses","Honey",
+    "Caramel","Toffee","Burnt Sugar",
+    "Milk","Cream","Butter","Yogurt"
   ],
   "Nutty/Toasted/Roasted": [
-    "Hazelnut", "Almond", "Peanut", "Walnut","Macadamia","Pecan",
-"Malt", "Toast", "Sweet Popcorn", "Bran","Tortilla","Cereal/Grain",
-    "Coffee", "Smoky","Burnt"
+    "Hazelnut","Almond","Peanut","Walnut","Macadamia","Pecan",
+    "Malt","Toast","Sweet Popcorn","Bran","Tortilla","Cereal/Grain",
+    "Coffee","Smoky","Burnt"
   ],
-  "Cocoa": ["Cocoa", "Dark Chocolate", "Cocoa Powder","Fermented"]
+  "Cocoa": ["Cocoa","Dark Chocolate","Cocoa Powder","Fermented"]
 };
+
+const BASIC_TASTES = ["Sweet","Sour","Bitter","Salty","Umami"];
+const MOUTHFEEL_DESCRIPTORS = [
+  "Creamy","Coarse","Soft","Melting","Sticky","Oily","Grainy",
+  "Pungent","Astringent","Warm","Cool"
+];
 
 /***********************
  * STATE
@@ -318,15 +344,14 @@ const mouthfeelCloud = document.getElementById("mouthfeelCloud");
 const aromaCloud = document.getElementById("aromaCloud");
 
 /***********************
- * SESSION MODAL FIX
+ * SESSION MODAL
  ***********************/
 startSessionBtn.addEventListener("click", () => {
   const val = sessionInput.value.trim();
   if (!val) return;
 
-  sessionID = val;
+  sessionID = val.toLowerCase(); // CASE-INSENSITIVE
 
-  // Hide modal so landing page becomes interactive
   sessionModal.style.display = "none";
 });
 
@@ -345,27 +370,14 @@ function initCharts() {
     data: {
       labels: BASIC_TASTES,
       datasets: [{
-        label: "My ratings",
+        label: "My Ratings",
         data: BASIC_TASTES.map(() => 0),
-        backgroundColor: "rgba(255, 215, 128, 0.2)",
+        backgroundColor: "rgba(255,215,128,0.2)",
         borderColor: "#ffd780",
-        borderWidth: 2,
-        pointBackgroundColor: "#ffd780"
+        borderWidth: 2
       }]
     },
-    options: {
-      scales: {
-        r: {
-          min: 0,
-          max: 5,
-          ticks: { stepSize: 1, color: "#f7e7d3" },
-          grid: { color: "rgba(247,231,211,0.3)" },
-          angleLines: { color: "rgba(247,231,211,0.3)" },
-          pointLabels: { color: "#f7e7d3" }
-        }
-      },
-      plugins: { legend: { display: false } }
-    }
+    options: { plugins: { legend: { display: false } } }
   });
 
   aromaRadarChart = new Chart(aromaCtx, {
@@ -373,27 +385,14 @@ function initCharts() {
     data: {
       labels: AROMA_AXES,
       datasets: [{
-        label: "My ratings",
+        label: "My Ratings",
         data: AROMA_AXES.map(() => 0),
-        backgroundColor: "rgba(255, 215, 128, 0.2)",
+        backgroundColor: "rgba(255,215,128,0.2)",
         borderColor: "#ffd780",
-        borderWidth: 2,
-        pointBackgroundColor: "#ffd780"
+        borderWidth: 2
       }]
     },
-    options: {
-      scales: {
-        r: {
-          min: 0,
-          max: 5,
-          ticks: { stepSize: 1, color: "#f7e7d3" },
-          grid: { color: "rgba(247,231,211,0.3)" },
-          angleLines: { color: "rgba(247,231,211,0.3)" },
-          pointLabels: { color: "#f7e7d3" }
-        }
-      },
-      plugins: { legend: { display: false } }
-    }
+    options: { plugins: { legend: { display: false } } }
   });
 }
 
@@ -487,7 +486,6 @@ function buildMouthfeelButtons() {
  * SLIDER EVENT HANDLERS
  ***********************/
 function attachSliderListeners() {
-  // BASIC TASTES
   document.querySelectorAll('input[data-type="basic"]').forEach(slider => {
     slider.addEventListener("input", () => {
       const key = slider.dataset.key;
@@ -503,7 +501,6 @@ function attachSliderListeners() {
     });
   });
 
-  // AROMA AXES
   document.querySelectorAll('input[data-type="aroma"]').forEach(slider => {
     slider.addEventListener("input", () => {
       const key = slider.dataset.key;
@@ -527,6 +524,7 @@ document.querySelectorAll(".choc-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     currentChocolateId = btn.dataset.chocId;
     chocTitle.textContent = btn.textContent;
+
     pageSelect.classList.add("hidden");
     pageRatings.classList.remove("hidden");
 
@@ -535,6 +533,8 @@ document.querySelectorAll(".choc-btn").forEach(btn => {
     buildAromaSliders();
     buildMouthfeelButtons();
     attachSliderListeners();
+
+    loadGroupRatings();
   });
 });
 
@@ -559,12 +559,58 @@ function updateClouds() {
 }
 
 /***********************
+ * GROUP AVERAGING
+ ***********************/
+function loadGroupRatings() {
+  if (!firebaseEnabled) return;
+
+  db.ref(`ratings/${sessionID}/${currentChocolateId}`).on("value", snapshot => {
+    const all = snapshot.val();
+    if (!all) return;
+
+    const users = Object.values(all);
+
+    // Average basic tastes
+    const avgBasic = BASIC_TASTES.map(taste => {
+      const vals = users.map(u => u.basic?.[taste] ?? 0);
+      return vals.reduce((a,b)=>a+b,0) / vals.length;
+    });
+
+    // Average aroma axes
+    const avgAroma = AROMA_AXES.map(axis => {
+      const vals = users.map(u => u.aromaValues?.[axis] ?? 0);
+      return vals.reduce((a,b)=>a+b,0) / vals.length;
+    });
+
+    // Update charts
+    if (currentTab === "all") {
+      basicRadarChart.data.datasets[0].data = avgBasic;
+      aromaRadarChart.data.datasets[0].data = avgAroma;
+      basicRadarChart.update();
+      aromaRadarChart.update();
+    }
+
+    // Word clouds
+    const mouthfeelWords = {};
+    const aromaWords = {};
+
+    users.forEach(u => {
+      (u.mouthfeel || []).forEach(w => mouthfeelWords[w] = (mouthfeelWords[w]||0)+1);
+      (u.aromaWords || []).forEach(w => aromaWords[w] = (aromaWords[w]||0)+1);
+    });
+
+    mouthfeelCloud.textContent = Object.keys(mouthfeelWords).join(", ");
+    aromaCloud.textContent = Object.keys(aromaWords).join(", ");
+  });
+}
+
+/***********************
  * FIREBASE SYNC
  ***********************/
 function updateFirebase() {
   if (!firebaseEnabled || !sessionID || !currentChocolateId) return;
 
-  db.ref(`ratings/${sessionID}/${currentChocolateId}`).set({
+  db.ref(`ratings/${sessionID}/${currentChocolateId}/${userID}`).set({
     basic: Object.fromEntries(Object.entries(myRatings.basic)),
     mouthfeel: Array.from(myRatings.mouthfeel),
     aromaValues: Object.fromEntries(Object.entries(myRatings.aromaValues)),
