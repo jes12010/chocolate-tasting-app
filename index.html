@@ -161,57 +161,59 @@
   </div>
 
   <!-- LANDING PAGE -->
-  <div id="page-select" class="container">
-    <h2>Select Your Chocolate</h2>
-    <div class="landing-buttons">
-      <button class="choc-btn" data-choc-id="choc1">Chocolate 1</button>
-      <button class="choc-btn" data-choc-id="choc2">Chocolate 2</button>
-      <button class="choc-btn" data-choc-id="choc3">Chocolate 3</button>
-      <button class="choc-btn" data-choc-id="choc4">Chocolate 4</button>
-    </div>
+<div id="page-select" class="container">
+  <h2>Select Your Chocolate</h2>
+  <div class="landing-buttons">
+    <button class="choc-btn" data-choc-id="choc1">Chocolate 1</button>
+    <button class="choc-btn" data-choc-id="choc2">Chocolate 2</button>
+    <button class="choc-btn" data-choc-id="choc3">Chocolate 3</button>
+    <button class="choc-btn" data-choc-id="choc4">Chocolate 4</button>
+  </div>
+</div>
+
+<!-- TASTING PAGE -->
+<div id="page-ratings" class="container hidden">
+  <h2 id="choc-title"></h2>
+
+  <div class="tabs">
+    <button id="tab-my" class="active">My Ratings</button>
+    <button id="tab-all">Everyone's Ratings</button>
   </div>
 
-  <!-- TASTING PAGE -->
-  <div id="page-ratings" class="container hidden">
-    <h2 id="choc-title"></h2>
+  <!-- BASIC TASTES -->
+  <h3>Basic Taste Sliders</h3>
+  <div id="basic-sliders"></div>
 
-    <div class="tabs">
-      <button id="tab-my" class="active">My Ratings</button>
-      <button id="tab-all">Everyone's Ratings</button>
-    </div>
-
-    <!-- VISUALS AT TOP -->
-    <div class="visuals-grid">
-      <div class="visual-box">
-        <h3>Basic Tastes</h3>
-        <canvas id="basicRadar"></canvas>
-      </div>
-
-      <div class="visual-box">
-        <h3>Mouthfeel Words</h3>
-        <div id="mouthfeelCloud"></div>
-      </div>
-
-      <div class="visual-box">
-        <h3>Aromas</h3>
-        <canvas id="aromaRadar"></canvas>
-      </div>
-
-      <div class="visual-box">
-        <h3>Aroma Words</h3>
-        <div id="aromaCloud"></div>
-      </div>
-    </div>
-
-    <h3>Basic Taste Sliders</h3>
-    <div id="basic-sliders"></div>
-
-    <h3>Mouthfeel</h3>
-    <div id="mouthfeel-buttons" class="descriptor-buttons"></div>
-
-    <h3>Aromas</h3>
-    <div id="aroma-sliders"></div>
+  <div id="basic-plot-section" class="visual-box">
+    <canvas id="basicRadar"></canvas>
   </div>
+
+  <!-- MOUTHFEEL -->
+  <h3>Mouthfeel</h3>
+  <div id="mouthfeel-buttons" class="descriptor-buttons"></div>
+
+  <div id="mouthfeel-cloud-section" class="visual-box">
+    <div id="mouthfeelCloud"></div>
+  </div>
+
+  <!-- AROMAS -->
+  <h3>Aromas</h3>
+  <div id="aroma-sliders"></div>
+
+  <div id="aroma-plot-section" class="visual-box">
+    <canvas id="aromaRadar"></canvas>
+  </div>
+
+  <div id="aroma-cloud-section" class="visual-box">
+    <div id="aromaCloud"></div>
+  </div>
+
+  <!-- NAVIGATION BUTTONS -->
+  <div id="nav-buttons" style="margin-top: 30px; text-align: center;">
+    <button id="prevChocolate" class="nav-btn">Previous</button>
+    <button id="nextChocolate" class="nav-btn">Next</button>
+  </div>
+</div>
 
 <script>
 /***********************
@@ -377,7 +379,19 @@ function initCharts() {
         borderWidth: 2
       }]
     },
-    options: { plugins: { legend: { display: false } } }
+    options: {
+      scales: {
+        r: {
+          min: 0,
+          max: 5,
+          ticks: { stepSize: 1, color: "#f7e7d3" },
+          grid: { color: "rgba(247,231,211,0.3)" },
+          angleLines: { color: "rgba(247,231,211,0.3)" },
+          pointLabels: { color: "#f7e7d3" }
+        }
+      },
+      plugins: { legend: { display: false } }
+    }
   });
 
   aromaRadarChart = new Chart(aromaCtx, {
@@ -392,7 +406,19 @@ function initCharts() {
         borderWidth: 2
       }]
     },
-    options: { plugins: { legend: { display: false } } }
+    options: {
+      scales: {
+        r: {
+          min: 0,
+          max: 5,
+          ticks: { stepSize: 1, color: "#f7e7d3" },
+          grid: { color: "rgba(247,231,211,0.3)" },
+          angleLines: { color: "rgba(247,231,211,0.3)" },
+          pointLabels: { color: "#f7e7d3" }
+        }
+      },
+      plugins: { legend: { display: false } }
+    }
   });
 }
 
@@ -423,6 +449,8 @@ function buildAromaDescriptorButtons(axis) {
     btn.textContent = word;
     btn.dataset.word = word;
     btn.style.background = color;
+
+    if (axis === "Cocoa") btn.style.color = "white";
 
     btn.addEventListener("click", () => {
       if (myRatings.aromaWords.has(word)) {
@@ -464,7 +492,8 @@ function buildMouthfeelButtons() {
     const btn = document.createElement("button");
     btn.textContent = word;
     btn.dataset.word = word;
-    btn.style.background = "#5a3e36";
+    btn.style.background = "#2ec4b6";  // turquoise
+    btn.style.color = "#00332e";
 
     btn.addEventListener("click", () => {
       if (myRatings.mouthfeel.has(word)) {
@@ -522,32 +551,54 @@ function attachSliderListeners() {
  ***********************/
 document.querySelectorAll(".choc-btn").forEach(btn => {
   btn.addEventListener("click", () => {
-    currentChocolateId = btn.dataset.chocId;
-    chocTitle.textContent = btn.textContent;
-
-    pageSelect.classList.add("hidden");
-    pageRatings.classList.remove("hidden");
-
-    initCharts();
-    buildBasicSliders();
-    buildAromaSliders();
-    buildMouthfeelButtons();
-    attachSliderListeners();
-
-    loadGroupRatings();
+    loadChocolate(btn.dataset.chocId);
   });
 });
+
+function loadChocolate(chocId) {
+  currentChocolateId = chocId;
+  const btn = document.querySelector(`.choc-btn[data-choc-id="${chocId}"]`);
+  chocTitle.textContent = btn.textContent;
+
+  pageSelect.classList.add("hidden");
+  pageRatings.classList.remove("hidden");
+
+  initCharts();
+  buildBasicSliders();
+  buildAromaSliders();
+  buildMouthfeelButtons();
+  attachSliderListeners();
+  loadGroupRatings();
+}
 
 tabMy.addEventListener("click", () => {
   currentTab = "my";
   tabMy.classList.add("active");
   tabAll.classList.remove("active");
+
+  document.getElementById("basic-sliders").style.display = "block";
+  document.getElementById("mouthfeel-buttons").style.display = "flex";
+  document.getElementById("aroma-sliders").style.display = "block";
+
+  document.getElementById("basic-plot-section").style.display = "block";
+  document.getElementById("mouthfeel-cloud-section").style.display = "block";
+  document.getElementById("aroma-plot-section").style.display = "block";
+  document.getElementById("aroma-cloud-section").style.display = "block";
 });
 
 tabAll.addEventListener("click", () => {
   currentTab = "all";
-  tabAll.classList.add("active");
   tabMy.classList.remove("active");
+  tabAll.classList.add("active");
+
+  document.getElementById("basic-sliders").style.display = "none";
+  document.getElementById("mouthfeel-buttons").style.display = "none";
+  document.getElementById("aroma-sliders").style.display = "none";
+
+  document.getElementById("basic-plot-section").style.display = "block";
+  document.getElementById("mouthfeel-cloud-section").style.display = "block";
+  document.getElementById("aroma-plot-section").style.display = "block";
+  document.getElementById("aroma-cloud-section").style.display = "block";
 });
 
 /***********************
@@ -570,19 +621,16 @@ function loadGroupRatings() {
 
     const users = Object.values(all);
 
-    // Average basic tastes
     const avgBasic = BASIC_TASTES.map(taste => {
       const vals = users.map(u => u.basic?.[taste] ?? 0);
       return vals.reduce((a,b)=>a+b,0) / vals.length;
     });
 
-    // Average aroma axes
     const avgAroma = AROMA_AXES.map(axis => {
       const vals = users.map(u => u.aromaValues?.[axis] ?? 0);
       return vals.reduce((a,b)=>a+b,0) / vals.length;
     });
 
-    // Update charts
     if (currentTab === "all") {
       basicRadarChart.data.datasets[0].data = avgBasic;
       aromaRadarChart.data.datasets[0].data = avgAroma;
@@ -590,7 +638,6 @@ function loadGroupRatings() {
       aromaRadarChart.update();
     }
 
-    // Word clouds
     const mouthfeelWords = {};
     const aromaWords = {};
 
@@ -613,10 +660,27 @@ function updateFirebase() {
   db.ref(`ratings/${sessionID}/${currentChocolateId}/${userID}`).set({
     basic: Object.fromEntries(Object.entries(myRatings.basic)),
     mouthfeel: Array.from(myRatings.mouthfeel),
-    aromaValues: Object.fromEntries(Object.entries(myRatings.aromaValues)),
+        aromaValues: Object.fromEntries(Object.entries(myRatings.aromaValues)),
     aromaWords: Array.from(myRatings.aromaWords)
   });
 }
+
+/***********************
+ * NAVIGATION BUTTONS
+ ***********************/
+const chocolates = ["choc1", "choc2", "choc3", "choc4"];
+
+document.getElementById("nextChocolate").addEventListener("click", () => {
+  const idx = chocolates.indexOf(currentChocolateId);
+  const next = chocolates[(idx + 1) % chocolates.length];
+  loadChocolate(next);
+});
+
+document.getElementById("prevChocolate").addEventListener("click", () => {
+  const idx = chocolates.indexOf(currentChocolateId);
+  const prev = chocolates[(idx - 1 + chocolates.length) % chocolates.length];
+  loadChocolate(prev);
+});
 </script>
 </body>
 </html>
