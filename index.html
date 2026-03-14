@@ -32,6 +32,7 @@
     .hidden { display: none; }
     .slider-group { margin: 20px 0; }
     .slider-group label { display: block; margin-bottom: 5px; }
+
     .descriptor-buttons button {
       margin: 5px;
       padding: 6px 10px;
@@ -44,6 +45,7 @@
     .descriptor-buttons button.selected {
       outline: 2px solid #fff;
     }
+
     .tabs {
       display: flex;
       justify-content: center;
@@ -62,25 +64,66 @@
       background: #d4a373;
       color: #3b2f2f;
     }
-    #reset-all {
+
+    canvas {
+      margin-top: 20px;
+    }
+
+    /* SESSION MODAL */
+    #sessionModal {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    #sessionCard {
+      background: #4a332d;
+      border: 2px solid #d4a373;
+      padding: 30px;
+      border-radius: 12px;
+      width: 80%;
+      max-width: 350px;
+      text-align: center;
+      color: #f7e7d3;
+    }
+    #sessionCard input {
+      width: 90%;
+      padding: 10px;
+      margin-top: 15px;
+      border-radius: 6px;
+      border: none;
+      font-size: 16px;
+    }
+    #startSessionBtn {
       margin-top: 20px;
       padding: 10px 16px;
-      background: #8b3a3a;
+      background: #d4a373;
       border: none;
-      color: #f7e7d3;
+      color: #3b2f2f;
       border-radius: 6px;
       cursor: pointer;
       width: 100%;
       font-size: 16px;
-    }
-    canvas {
-      margin-top: 20px;
+      font-weight: bold;
     }
   </style>
 </head>
 
 <body>
   <h1>Chocolate Tasting</h1>
+
+  <!-- SESSION ID MODAL -->
+  <div id="sessionModal">
+    <div id="sessionCard">
+      <h2>Enter Session ID</h2>
+      <input id="sessionInput" type="text" placeholder="e.g. GroupA" />
+      <button id="startSessionBtn">Start Session</button>
+    </div>
+  </div>
 
   <!-- Landing Page -->
   <div id="page-select" class="container">
@@ -99,8 +142,6 @@
       <button id="tab-my" class="active">My Ratings</button>
       <button id="tab-all">Everyone's Ratings</button>
     </div>
-
-    <button id="reset-all">Reset All Ratings</button>
 
     <h3>Basic Tastes</h3>
     <div id="basic-sliders"></div>
@@ -141,6 +182,8 @@
     } catch (e) {
       console.warn("Firebase not configured or failed to init. Running local-only.", e);
     }
+
+    let sessionID = "";
 
     const BASIC_TASTES = ["Sweet", "Sour", "Bitter", "Salty", "Umami"];
 
@@ -201,16 +244,13 @@
       aromaWords: new Set()
     };
 
-    let allRatings = {
-      basic: {},
-      mouthfeel: {},
-      aromaValues: {},
-      aromaWords: {}
-    };
-
     /***********************
      * DOM ELEMENTS        *
      ***********************/
+    const sessionModal = document.getElementById("sessionModal");
+    const sessionInput = document.getElementById("sessionInput");
+    const startSessionBtn = document.getElementById("startSessionBtn");
+
     const pageSelect = document.getElementById("page-select");
     const pageRatings = document.getElementById("page-ratings");
     const chocTitle = document.getElementById("choc-title");
@@ -225,7 +265,15 @@
     const mouthfeelCloud = document.getElementById("mouthfeelCloud");
     const aromaCloud = document.getElementById("aromaCloud");
 
-    const resetBtn = document.getElementById("reset-all");
+    /***********************
+     * SESSION MODAL       *
+     ***********************/
+    startSessionBtn.addEventListener("click", () => {
+      const val = sessionInput.value.trim();
+      if (!val) return;
+      sessionID = val;
+      sessionModal.style.display = "none";
+    });
 
     /***********************
      * CHARTS              *
@@ -408,33 +456,13 @@
       tabMy.classList.remove("active");
     });
 
-    resetBtn.addEventListener("click", () => {
-      if (!currentChocolateId) return;
-
-      myRatings = {
-        basic: {},
-        mouthfeel: new Set(),
-        aromaValues: {},
-        aromaWords: new Set()
-      };
-
-      if (firebaseEnabled) {
-        db.ref(`ratings/${currentChocolateId}`).remove();
-      }
-
-      buildBasicSliders();
-      buildAromaSliders();
-      buildMouthfeelButtons();
-      initCharts();
-      updateClouds();
-    });
-
     /***********************
      * FIREBASE SYNC       *
      ***********************/
     function updateFirebase() {
-      if (!firebaseEnabled) return;
-      db.ref(`ratings/${currentChocolateId}`).set({
+      if (!firebaseEnabled || !sessionID || !currentChocolateId) return;
+
+      db.ref(`ratings/${sessionID}/${currentChocolateId}`).set({
         basic: Object.fromEntries(Object.entries(myRatings.basic)),
         mouthfeel: Array.from(myRatings.mouthfeel),
         aromaValues: Object.fromEntries(Object.entries(myRatings.aromaValues)),
