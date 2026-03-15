@@ -715,11 +715,23 @@ function loadGroupRatings() {
     });
 
     if (currentTab === "all") {
-      basicRadarChart.data.datasets[0].data = avgBasic;
-      aromaRadarChart.data.datasets[0].data = avgAroma;
-      basicRadarChart.update();
-      aromaRadarChart.update();
-    }
+  const maxM = Math.max(...Object.values(mouthfeelFreq), 1);
+  const maxA = Math.max(...Object.values(aromaFreq), 1);
+
+  mouthfeelCloud.innerHTML = Object.entries(mouthfeelFreq)
+    .map(([word, count]) => {
+      const size = 14 + (count / maxM) * 26;
+      return `<span style="font-size:${size}px;margin:4px;">${word}</span>`;
+    })
+    .join("");
+
+  aromaCloud.innerHTML = Object.entries(aromaFreq)
+    .map(([word, count]) => {
+      const size = 14 + (count / maxA) * 26;
+      return `<span style="font-size:${size}px;margin:4px;">${word}</span>`;
+    })
+    .join("");
+}
 
     // WORD FREQUENCIES
     const mouthfeelFreq = {};
