@@ -696,72 +696,93 @@ function updateClouds() {
 function loadGroupRatings() {
   if (!firebaseEnabled || !sessionID || !currentChocolateId) return;
 
+  // We use .on('value') so Firebase pushes updates to us automatically
   db.ref(`ratings/${sessionID}/${currentChocolateId}`).on("value", snapshot => {
     const all = snapshot.val();
     if (!all) return;
 
     const users = Object.values(all);
 
-    // BASIC AVERAGES
+    // 1. Calculate BASIC AVERAGES
     const avgBasic = BASIC_TASTES.map(taste => {
       const vals = users.map(u => u.basic?.[taste] ?? 0);
-      return vals.reduce((a,b)=>a+b,0) / vals.length;
+      return vals.reduce((a, b) => a + b, 0) / vals.length;
     });
 
-    // AROMA AVERAGES
+    // 2. Calculate AROMA AVERAGES
     const avgAroma = AROMA_AXES.map(axis => {
       const vals = users.map(u => u.aromaValues?.[axis] ?? 0);
-      return vals.reduce((a,b)=>a+b,0) / vals.length;
+      return vals.reduce((a, b) => a + b, 0) / vals.length;
     });
 
-    if (currentTab === "all") {
-  const maxM = Math.max(...Object.values(mouthfeelFreq), 1);
-  const maxA = Math.max(...Object.values(aromaFreq), 1);
-
-  mouthfeelCloud.innerHTML = Object.entries(mouthfeelFreq)
-    .map(([word, count]) => {
-      const size = 14 + (count / maxM) * 26;
-      return `<span style="font-size:${size}px;margin:4px;">${word}</span>`;
-    })
-    .join("");
-
-  aromaCloud.innerHTML = Object.entries(aromaFreq)
-    .map(([word, count]) => {
-      const size = 14 + (count / maxA) * 26;
-      return `<span style="font-size:${size}px;margin:4px;">${word}</span>`;
-    })
-    .join("");
-}
-
-    // WORD FREQUENCIES
+    // 3. Calculate WORD FREQUENCIES
     const mouthfeelFreq = {};
     const aromaFreq = {};
-
     users.forEach(u => {
-      (u.mouthfeel || []).forEach(w => mouthfeelFreq[w] = (mouthfeelFreq[w]||0)+1);
-      (u.aromaWords || []).forEach(w => aromaFreq[w] = (aromaFreq[w]||0)+1);
+      (u.mouthfeel || []).forEach(w => mouthfeelFreq[w] = (mouthfeelFreq[w] || 0) + 1);
+      (u.aromaWords || []).forEach(w => aromaFreq[w] = (aromaFreq[w] || 0) + 1);
     });
 
+    // 4. Update UI ONLY if "Everyone's Ratings" tab is active
     if (currentTab === "all") {
+      // Update Charts
+      basicRadarChart.data.datasets[0].data = avgBasic;
+      basicRadarChart.data.datasets[0].label = "Group Average";
+      basicRadarChart.update();
+
+      aromaRadarChart.data.datasets[0].data = avgAroma;
+      aromaRadarChart.data.datasets[0].label = "Group Average";
+      aromaRadarChart.update();
+
+      // Update Clouds
       const maxM = Math.max(...Object.values(mouthfeelFreq), 1);
       const maxA = Math.max(...Object.values(aromaFreq), 1);
 
       mouthfeelCloud.innerHTML = Object.entries(mouthfeelFreq)
         .map(([word, count]) => {
           const size = 14 + (count / maxM) * 26;
-          return `<span style="font-size:${size}px;margin:4px;">${word}</span>`;
-        })
-        .join("");
+          return `<span style="font-size:${size}px;margin:4px;opacity:0.9">${word}</span>`;
+        }).join("");
 
       aromaCloud.innerHTML = Object.entries(aromaFreq)
         .map(([word, count]) => {
           const size = 14 + (count / maxA) * 26;
-          return `<span style="font-size:${size}px;margin:4px;">${word}</span>`;
-        })
-        .join("");
+          return `<span style="font-size:${size}px;margin:4px;opacity:0.9">${word}</span>`;
+        }).join("");
     }
   });
 }
+
+// IMPORTANT: Update the Tab Click Listeners to refresh data when switching
+tabAll.addEventListener("click", () => {
+  currentTab = "all";
+  tabMy.classList.remove("active");
+  tabAll.classList.add("active");
+  
+  // Hide inputs
+  document.getElementById("basic-sliders").style.display = "none";
+  document.getElementById("mouthfeel-buttons").style.display = "none";
+  document.getElementById("aroma-sliders").style.display = "none";
+
+  // Force a data refresh from Firebase for the "All" view
+  loadGroupRatings();
+});
+
+tabMy.addEventListener("click", () => {
+  currentTab = "my";
+  tabMy.classList.add("active");
+  tabAll.classList.remove("active");
+
+  // Show inputs
+  document.getElementById("basic-sliders").style.display = "block";
+  document.getElementById("mouthfeel-buttons").style.display = "flex";
+  document.getElementById("aroma-sliders").style.display = "block";
+
+  // Restore the "My" view labels and data
+  basicRadarChart.data.datasets[0].label = "My Ratings";
+  aromaRadarChart.data.datasets[0].label = "My Ratings";
+  loadMySavedRatings(); 
+});
 /***********************
  * FIREBASE SYNC
  ***********************/
